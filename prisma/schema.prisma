@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Question {
+  id            String      @id @default(uuid()) @db.Uuid
+  block         Int         @db.SmallInt
+  topic         String
+  type          String
+  question      String
+  options       Json
+  correct_index Int         @db.SmallInt
+  explanation   String
+  source        String      @default("hardcoded")
+  created_at    DateTime    @default(now()) @db.Timestamptz
+
+  answer_logs   AnswerLog[]
+
+  @@map("questions")
+}
+
+model AnswerLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  question_id String?  @db.Uuid
+  block       Int      @db.SmallInt
+  topic       String
+  is_correct  Boolean
+  answered_at DateTime @default(now()) @db.Timestamptz
+
+  question    Question? @relation(fields: [question_id], references: [id])
+
+  @@map("answer_log")
+}
+
+model TopicStats {
+  topic          String   @id
+  block          Int      @db.SmallInt
+  total_answers  Int      @default(0)
+  correct        Int      @default(0)
+  last_seen      DateTime? @db.Timestamptz
+  weakness_score Float    @default(0.5)
+
+  @@map("topic_stats")
+}
