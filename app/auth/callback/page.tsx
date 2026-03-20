@@ -21,9 +21,16 @@ function CallbackHandler() {
       return
     }
 
-    client.auth.exchangeCodeForSession(code).then(() => {
-      router.replace("/")
-    }).catch(() => {
+    client.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+      if (error || !data.session) {
+        console.error("exchangeCodeForSession error:", error?.message)
+        router.replace("/login")
+      } else {
+        console.log("Session established for user:", data.session.user.id)
+        router.replace("/")
+      }
+    }).catch((err) => {
+      console.error("exchangeCodeForSession threw:", err)
       router.replace("/login")
     })
   }, [searchParams, router])
