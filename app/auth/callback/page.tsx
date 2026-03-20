@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase-auth"
 
@@ -15,54 +15,32 @@ function Spinner() {
 function CallbackHandler() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState("Processing...")
 
   useEffect(() => {
     const client = getSupabaseClient()
     if (!client) {
-      setStatus("No Supabase client")
-      setTimeout(() => router.replace("/"), 2000)
+      router.replace("/")
       return
     }
 
     const code = searchParams.get("code")
-    const hash = typeof window !== "undefined" ? window.location.hash : ""
-    const fullUrl = typeof window !== "undefined" ? window.location.href : "unknown"
-
-    setStatus(`URL: ${fullUrl}`)
 
     if (code) {
-      setStatus(`PKCE flow - exchanging code...`)
+      // PKCE flow
       client.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-        if (error || !data.session) {
-          setStatus(`Error: ${error?.message ?? "no session"}`)
-          setTimeout(() => router.replace("/login"), 2000)
-        } else {
-          setStatus(`Signed in as ${data.session.user.email}`)
-          setTimeout(() => router.replace("/"), 1000)
-        }
-      }).catch((err) => {
-        setStatus(`Threw: ${err?.message}`)
-        setTimeout(() => router.replace("/login"), 2000)
-      })
+        router.replace(error || !data.session ? "/login" : "/")
+      }).catch(() => router.replace("/login"))
       return
     }
 
-    if (hash.includes("access_token")) {
-      setStatus("Implicit flow - waiting for Supabase to process hash...")
-      setTimeout(() => router.replace("/"), 2000)
-    } else {
-      setStatus(`No code or hash found - redirecting`)
-      setTimeout(() => router.replace("/"), 2000)
-    }
+    // Implicit flow: Supabase auto-processes the hash on client init and clears it.
+    // The session is already stored - just check it exists and redirect.
+    client.auth.getSession().then(({ data }) => {
+      router.replace(data.session ? "/" : "/login")
+    })
   }, [searchParams, router])
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-      <div className="w-6 h-6 rounded-full border-2 border-indigo-400/30 border-t-indigo-500 animate-spin" />
-      <p className="text-sm text-zinc-400 font-mono px-4 text-center">{status}</p>
-    </div>
-  )
+  return <Spinner />
 }
 
 export default function AuthCallbackPage() {
