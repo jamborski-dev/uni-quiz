@@ -24,7 +24,9 @@ export async function GET(request: Request) {
     }
   }
 
-  const topics = questionCounts.map((row: { block: number; topic: string; _count: { id: number } }) => ({
+  type TopicRow = { block: number; topic: string; total_questions: number; total_answers: number; correct: number; weakness_score: number }
+
+  const topics: TopicRow[] = questionCounts.map((row: { block: number; topic: string; _count: { id: number } }) => ({
     block: row.block,
     topic: row.topic,
     total_questions: row._count.id,
@@ -32,7 +34,7 @@ export async function GET(request: Request) {
   }))
 
   // Sort by block then topic
-  topics.sort((a, b) => a.block - b.block || a.topic.localeCompare(b.topic))
+  topics.sort((a: TopicRow, b: TopicRow) => a.block - b.block || a.topic.localeCompare(b.topic))
 
   return NextResponse.json({ topics })
 }
