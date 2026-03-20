@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
-import { onAuthStateChange, signOut as authSignOut } from "@/lib/supabase-auth"
+import { onAuthStateChange, signOut as authSignOut, getSupabaseClient } from "@/lib/supabase-auth"
 import type { Profile } from "@/lib/types"
 
 interface AuthState {
@@ -40,16 +40,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // onAuthStateChange fires INITIAL_SESSION once Supabase finishes
-    // reading from localStorage - this is the reliable way to initialise.
-    const { unsubscribe } = onAuthStateChange((uid) => {
-      setUserId(uid)
-      if (uid) {
-        fetchProfile(uid)
-      } else {
-        setProfile(null)
+    const client = getSupabaseClient()
+
+    if (!client) {
+      setLoading(false)
+      return
+    }
+
+    // getUser() validates token against server - reliable regardless of timing
+    client.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserId(user.id)
+        fetchProfile(user.id)
       }
       setLoading(false)
+    })
+
+    // Subscribe to future auth changes (sign in/out)
+    const { unsubscribe } = onAuthStateChange((uid) => {
+      setUserId(uid)
+      if (uid) fetchProfile(uid)
+      else setProfile(null)
     })
 
     return unsubscribe
