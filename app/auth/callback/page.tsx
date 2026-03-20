@@ -27,8 +27,9 @@ function CallbackHandler() {
 
     const code = searchParams.get("code")
     const hash = typeof window !== "undefined" ? window.location.hash : ""
+    const fullUrl = typeof window !== "undefined" ? window.location.href : "unknown"
 
-    setStatus(`code=${code ? "present" : "none"} hash=${hash ? "present" : "none"}`)
+    setStatus(`URL: ${fullUrl}`)
 
     if (code) {
       setStatus(`PKCE flow - exchanging code...`)
