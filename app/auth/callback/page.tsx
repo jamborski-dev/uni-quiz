@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase-auth"
 
@@ -15,42 +15,53 @@ function Spinner() {
 function CallbackHandler() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [status, setStatus] = useState("Processing...")
 
   useEffect(() => {
     const client = getSupabaseClient()
     if (!client) {
-      router.replace("/")
+      setStatus("No Supabase client")
+      setTimeout(() => router.replace("/"), 2000)
       return
     }
 
     const code = searchParams.get("code")
+    const hash = typeof window !== "undefined" ? window.location.hash : ""
+
+    setStatus(`code=${code ? "present" : "none"} hash=${hash ? "present" : "none"}`)
 
     if (code) {
-      // PKCE flow
+      setStatus(`PKCE flow - exchanging code...`)
       client.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         if (error || !data.session) {
-          router.replace("/login")
+          setStatus(`Error: ${error?.message ?? "no session"}`)
+          setTimeout(() => router.replace("/login"), 2000)
         } else {
-          router.replace("/")
+          setStatus(`Signed in as ${data.session.user.email}`)
+          setTimeout(() => router.replace("/"), 1000)
         }
-      }).catch(() => {
-        router.replace("/login")
+      }).catch((err) => {
+        setStatus(`Threw: ${err?.message}`)
+        setTimeout(() => router.replace("/login"), 2000)
       })
       return
     }
 
-    // Implicit flow - tokens arrive in the URL hash (#access_token=...)
-    // The Supabase browser client detects the hash automatically via onAuthStateChange
-    const hash = typeof window !== "undefined" ? window.location.hash : ""
     if (hash.includes("access_token")) {
-      // Wait for the Supabase client to process the hash fragment
-      setTimeout(() => router.replace("/"), 1500)
+      setStatus("Implicit flow - waiting for Supabase to process hash...")
+      setTimeout(() => router.replace("/"), 2000)
     } else {
-      router.replace("/")
+      setStatus(`No code or hash found - redirecting`)
+      setTimeout(() => router.replace("/"), 2000)
     }
   }, [searchParams, router])
 
-  return <Spinner />
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="w-6 h-6 rounded-full border-2 border-indigo-400/30 border-t-indigo-500 animate-spin" />
+      <p className="text-sm text-zinc-400 font-mono px-4 text-center">{status}</p>
+    </div>
+  )
 }
 
 export default function AuthCallbackPage() {
