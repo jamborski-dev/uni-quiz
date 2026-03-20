@@ -34,9 +34,14 @@ function CallbackHandler() {
     }
 
     // Implicit flow: Supabase auto-processes the hash on client init and clears it.
-    // The session is already stored - just check it exists and redirect.
+    // The session is already stored - do a full page reload so AuthContext
+    // initialises fresh with the session already in localStorage.
     client.auth.getSession().then(({ data }) => {
-      router.replace(data.session ? "/" : "/login")
+      if (data.session) {
+        window.location.href = "/"
+      } else {
+        router.replace("/login")
+      }
     })
   }, [searchParams, router])
 
