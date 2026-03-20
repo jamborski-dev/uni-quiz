@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         orderBy: { answered_at: "asc" },
         take: 50,
       })
-      prevAnswersByTopic.set(topic, prev.map((a) => ({ isCorrect: a.is_correct })))
+      prevAnswersByTopic.set(topic, prev.map((a: { is_correct: boolean }) => ({ isCorrect: a.is_correct })))
     }
 
     // Insert all answer logs
@@ -79,11 +79,11 @@ export async function POST(request: NextRequest) {
     const updatedStats = []
     for (const [topic, topicAnswers] of topicGroups) {
       const block = topicAnswers[0].block
-      const correctCount = topicAnswers.filter((a) => a.isCorrect).length
+      const correctCount = topicAnswers.filter((a: SessionAnswer) => a.isCorrect).length
 
       const allAnswers = [
         ...(prevAnswersByTopic.get(topic) ?? []),
-        ...topicAnswers.map((a) => ({ isCorrect: a.isCorrect })),
+        ...topicAnswers.map((a: SessionAnswer) => ({ isCorrect: a.isCorrect })),
       ]
 
       const weakness_score = computeWeaknessScore(allAnswers)
