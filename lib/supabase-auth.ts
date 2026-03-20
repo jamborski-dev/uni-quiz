@@ -51,10 +51,17 @@ export async function getSession() {
 export function onAuthStateChange(callback: (userId: string | null) => void) {
   const client = getClient()
   if (!client) {
+    // No client - immediately signal not loading with null user
+    setTimeout(() => callback(null), 0)
     return { unsubscribe: () => {} }
   }
-  const { data } = client.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user?.id ?? null)
+  const { data } = client.auth.onAuthStateChange((event, session) => {
+    // INITIAL_SESSION fires once client finishes reading from localStorage
+    // SIGNED_IN fires on new sign-in
+    // SIGNED_OUT fires on sign-out
+    if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
+      callback(session?.user?.id ?? null)
+    }
   })
   return { unsubscribe: () => data.subscription.unsubscribe() }
 }
