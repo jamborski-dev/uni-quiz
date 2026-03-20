@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const topics = questionCounts.map((row) => ({
+  const topics = questionCounts.map((row: { block: number; topic: string; _count: { id: number } }) => ({
     block: row.block,
     topic: row.topic,
     total_questions: row._count.id,
