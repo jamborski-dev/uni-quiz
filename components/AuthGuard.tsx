@@ -13,7 +13,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!AUTH_ENABLED) return
-    if (!loading && !userId && pathname !== "/login") {
+    if (!loading && !userId && pathname !== "/login" && pathname !== "/auth/callback") {
       router.replace("/login")
     }
   }, [loading, userId, pathname, router])
@@ -28,7 +28,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!userId && pathname !== "/login") return null
+  if (!userId && pathname !== "/login" && pathname !== "/auth/callback") return null
 
   return <>{children}</>
 }
