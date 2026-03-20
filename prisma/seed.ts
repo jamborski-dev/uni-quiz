@@ -17,6 +17,8 @@ async function main() {
       options: q.options,
       correct_index: q.correct_index,
       explanation: q.explanation,
+      topic_summary: q.topic_summary ?? null,
+      further_reading: (q.further_reading ?? []) as object[],
       source: q.source,
     })),
   })

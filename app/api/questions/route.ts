@@ -1,73 +1,53 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { SEED_QUESTIONS } from "@/data/questions";
-import type { Block } from "@/lib/types";
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { SEED_QUESTIONS } from "@/data/questions"
+import type { Block } from "@/lib/types"
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const blockParam = searchParams.get("block");
+  const { searchParams } = new URL(request.url)
+  const blockParam = searchParams.get("block")
+  const topicParam = searchParams.get("topic")
+  const topicsParam = searchParams.get("topics") // comma-separated list
+
   const block =
-    blockParam && blockParam !== "all" ? (Number(blockParam) as Block) : null;
+    blockParam && blockParam !== "all" ? (Number(blockParam) as Block) : null
+
+  const topicList = topicsParam
+    ? topicsParam.split(",").map((t) => t.trim()).filter(Boolean)
+    : null
 
   try {
-    const where = block ? { block } : {};
+    const where: Record<string, unknown> = {}
+    if (block) where.block = block
+    if (topicParam) where.topic = topicParam
+    if (topicList?.length) where.topic = { in: topicList }
+
     const data = await prisma.question.findMany({
       where,
       orderBy: { created_at: "desc" },
-    });
+    })
 
     if (data.length > 0) {
-      const shuffled = [...data].sort(() => Math.random() - 0.5);
-      return NextResponse.json({ questions: shuffled });
+      const shuffled = [...data].sort(() => Math.random() - 0.5)
+      return NextResponse.json({ questions: shuffled })
     }
   } catch {
-    // DB not configured yet — fall through to seed data
+    // DB not configured - fall through to seed data
   }
 
   // Fallback: hardcoded seed questions
-  const filtered = block
-    ? SEED_QUESTIONS.filter((q) => q.block === block)
-    : SEED_QUESTIONS;
+  let filtered = SEED_QUESTIONS as typeof SEED_QUESTIONS
+  if (block) filtered = filtered.filter((q) => q.block === block)
+  if (topicParam) filtered = filtered.filter((q) => q.topic === topicParam)
+  if (topicList?.length) filtered = filtered.filter((q) => topicList.includes(q.topic))
 
-  const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-  return NextResponse.json({ questions: shuffled });
+  const shuffled = [...filtered].sort(() => Math.random() - 0.5)
+  return NextResponse.json({ questions: shuffled })
 }
 
+// POST is now deprecated in favour of /api/session-complete
+// Kept for backwards compatibility with the quiz hook's fire-and-forget logging
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { question_id, block, topic, is_correct } = body as {
-      question_id: string;
-      block: number;
-      topic: string;
-      is_correct: boolean;
-    };
-
-    await prisma.answerLog.create({
-      data: { question_id, block, topic, is_correct },
-    });
-
-    // Upsert topic stats
-    await prisma.topicStats.upsert({
-      where: { topic },
-      create: {
-        topic,
-        block,
-        total_answers: 1,
-        correct: is_correct ? 1 : 0,
-        last_seen: new Date(),
-        weakness_score: is_correct ? 0.3 : 0.7,
-      },
-      update: {
-        total_answers: { increment: 1 },
-        correct: is_correct ? { increment: 1 } : undefined,
-        last_seen: new Date(),
-      },
-    });
-
-    return NextResponse.json({ ok: true });
-  } catch {
-    // Silently ignore logging errors in dev (DB may not be set up)
-    return NextResponse.json({ ok: false });
-  }
+  // No-op - answer logging is handled by /api/session-complete
+  return NextResponse.json({ ok: true })
 }

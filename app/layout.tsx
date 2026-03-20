@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next"
 import { Montserrat } from "next/font/google"
 import { ThemeProvider } from "@/components/ThemeProvider"
-import ThemeToggle from "@/components/ThemeToggle"
+import BottomNav from "@/components/BottomNav"
+import AuthGuard from "@/components/AuthGuard"
+import { AuthProvider } from "@/context/AuthContext"
 import "./globals.css"
 
 const montserrat = Montserrat({
@@ -17,6 +19,7 @@ export const metadata: Metadata = {
   title: "Open Uni TM111 Quiz",
   description: "Open University TM111 revision quiz",
   manifest: "/manifest.json",
+  icons: { icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -43,8 +46,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className={`${montserrat.variable} antialiased`}>
         <ThemeProvider>
-          <ThemeToggle />
-          {children}
+          <AuthProvider>
+            <AuthGuard>
+              <div className="pb-20">
+                {children}
+              </div>
+              <BottomNav />
+            </AuthGuard>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

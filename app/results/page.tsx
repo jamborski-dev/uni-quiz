@@ -17,8 +17,8 @@ function ResultsContent() {
 export default function ResultsPage() {
   return (
     <PageTransition>
-      <main className="min-h-screen flex flex-col items-center justify-center p-5 max-w-lg mx-auto">
-        <Suspense fallback={<p className="text-zinc-400 text-sm">Loading results…</p>}>
+      <main className="min-h-screen flex flex-col items-center p-5 max-w-lg mx-auto">
+        <Suspense fallback={<p className="text-zinc-400 text-sm mt-20">Loading results...</p>}>
           <ResultsContent />
         </Suspense>
       </main>

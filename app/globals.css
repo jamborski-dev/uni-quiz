@@ -10,6 +10,16 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+button, a, [role="button"], label[for], select {
+  cursor: pointer;
+}
+
+/* Hide Next.js router progress indicator */
+[data-nextjs-router-announcer],
+#nprogress {
+  display: none !important;
+}
+
 .dark body {
   background: #0e0d16;
   color: #f0eeff;

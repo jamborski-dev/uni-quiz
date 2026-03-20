@@ -1,23 +1,45 @@
 "use client"
 
-import { useParams, useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useEffect, Suspense } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { HiArrowLeft } from "react-icons/hi2"
 import Link from "next/link"
 import { useQuiz } from "@/hooks/useQuiz"
+import { useAuth } from "@/hooks/useAuth"
 import QuizCard from "@/components/QuizCard"
 import FeedbackPanel from "@/components/FeedbackPanel"
 import type { Block } from "@/lib/types"
 
-export default function QuizPage() {
+function QuizContent() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
+  const { userId, profile } = useAuth()
+
   const rawBlock = params.block as string
   const block = rawBlock === "all" ? "all" : (Number(rawBlock) as Block)
+  const topic = searchParams.get("topic") ?? undefined
+  const topicsParam = searchParams.get("topics")
+  const topics = topicsParam ? topicsParam.split(",").map((t) => t.trim()) : undefined
 
-  const { session, loading, error, selectedAnswer, showFeedback, selectAnswer, nextQuestion } =
-    useQuiz(block)
+  const {
+    session,
+    loading,
+    error,
+    selectedAnswer,
+    showFeedback,
+    isEvaluating,
+    currentEvaluation,
+    selectAnswer,
+    submitOpenAnswer,
+    nextQuestion,
+  } = useQuiz(block, {
+    topic,
+    topics,
+    userId: userId ?? undefined,
+    strictness: profile?.quiz_strictness as "lenient" | "balanced" | "strict" | undefined,
+  })
 
   useEffect(() => {
     if (session && session.current_index >= session.questions.length) {
@@ -35,7 +57,7 @@ export default function QuizPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          Loading questions…
+          Loading questions...
         </motion.p>
       </main>
     )
@@ -45,7 +67,9 @@ export default function QuizPage() {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center gap-4 p-5">
         <p className="text-red-500 text-sm">Error: {error}</p>
-        <Link href="/" className="text-indigo-600 dark:text-indigo-400 underline text-sm">Back to home</Link>
+        <Link href="/" className="text-indigo-600 dark:text-indigo-400 underline text-sm">
+          Back to home
+        </Link>
       </main>
     )
   }
@@ -53,8 +77,10 @@ export default function QuizPage() {
   if (!session || session.questions.length === 0) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center gap-4 p-5">
-        <p className="text-zinc-400 text-sm">No questions found.</p>
-        <Link href="/" className="text-indigo-600 dark:text-indigo-400 underline text-sm">Back to home</Link>
+        <p className="text-zinc-400 text-sm">No questions found for this selection.</p>
+        <Link href="/" className="text-indigo-600 dark:text-indigo-400 underline text-sm">
+          Back to home
+        </Link>
       </main>
     )
   }
@@ -94,6 +120,13 @@ export default function QuizPage() {
         />
       </div>
 
+      {/* Topic label */}
+      <div className="w-full mb-3">
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-full px-3 py-1">
+          Block {currentQuestion.block} · {currentQuestion.topic}
+        </span>
+      </div>
+
       {/* Animated question card */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -108,14 +141,17 @@ export default function QuizPage() {
             question={currentQuestion}
             selectedAnswer={selectedAnswer}
             showFeedback={showFeedback}
+            isEvaluating={isEvaluating}
             onSelect={selectAnswer}
+            onSubmitOpenAnswer={submitOpenAnswer}
           />
 
           <AnimatePresence>
             {showFeedback && (
               <FeedbackPanel
                 question={currentQuestion}
-                selectedAnswer={selectedAnswer!}
+                selectedAnswer={selectedAnswer}
+                evaluation={currentEvaluation ?? undefined}
                 onNext={nextQuestion}
                 isLast={session.current_index === session.questions.length - 1}
               />
@@ -124,5 +160,19 @@ export default function QuizPage() {
         </motion.div>
       </AnimatePresence>
     </main>
+  )
+}
+
+export default function QuizPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center">
+          <p className="text-zinc-400 dark:text-zinc-500 text-sm">Loading...</p>
+        </main>
+      }
+    >
+      <QuizContent />
+    </Suspense>
   )
 }

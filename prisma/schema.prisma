@@ -9,42 +9,67 @@ datasource db {
 }
 
 model Question {
-  id            String      @id @default(uuid()) @db.Uuid
-  block         Int         @db.SmallInt
-  topic         String
-  type          String
-  question      String
-  options       Json
-  correct_index Int         @db.SmallInt
-  explanation   String
-  source        String      @default("hardcoded")
-  created_at    DateTime    @default(now()) @db.Timestamptz
+  id              String      @id @default(uuid()) @db.Uuid
+  block           Int         @db.SmallInt
+  topic           String
+  type            String
+  question        String
+  options         Json
+  correct_index   Int         @db.SmallInt
+  explanation     String
+  topic_summary   String?
+  further_reading Json        @default("[]")
+  source          String      @default("hardcoded")
+  created_at      DateTime    @default(now()) @db.Timestamptz
 
-  answer_logs   AnswerLog[]
+  answer_logs     AnswerLog[]
 
   @@map("questions")
 }
 
+model Profile {
+  id              String       @id
+  display_name    String
+  role            String       @default("student")
+  quiz_strictness String       @default("balanced")
+
+  answer_logs     AnswerLog[]
+  topic_stats     TopicStats[]
+
+  @@map("profiles")
+}
+
+// NOTE: Before running this migration, truncate existing answer_log and topic_stats
+// tables in Supabase SQL editor:
+//   truncate table answer_log restart identity cascade;
+//   truncate table topic_stats restart identity cascade;
+// This is needed because user_id is now non-nullable.
 model AnswerLog {
   id          String   @id @default(uuid()) @db.Uuid
-  question_id String?  @db.Uuid
+  question_id String   @db.Uuid
   block       Int      @db.SmallInt
   topic       String
   is_correct  Boolean
   answered_at DateTime @default(now()) @db.Timestamptz
+  user_id     String
 
-  question    Question? @relation(fields: [question_id], references: [id])
+  question    Question @relation(fields: [question_id], references: [id])
+  profile     Profile  @relation(fields: [user_id], references: [id])
 
   @@map("answer_log")
 }
 
 model TopicStats {
-  topic          String   @id
-  block          Int      @db.SmallInt
-  total_answers  Int      @default(0)
-  correct        Int      @default(0)
+  topic          String
+  block          Int       @db.SmallInt
+  total_answers  Int       @default(0)
+  correct        Int       @default(0)
   last_seen      DateTime? @db.Timestamptz
-  weakness_score Float    @default(0.5)
+  weakness_score Float     @default(0.5)
+  user_id        String
 
+  profile        Profile   @relation(fields: [user_id], references: [id])
+
+  @@id([topic, user_id])
   @@map("topic_stats")
 }
