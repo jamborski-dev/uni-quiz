@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
   try {
     const profile = await prisma.profile.findUnique({ where: { id: userId } })
     return NextResponse.json({ profile })
-  } catch {
+  } catch (error) {
+    console.error("[api/profile] Prisma error:", error)
     return NextResponse.json({ profile: null })
   }
 }
