@@ -47,20 +47,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // getUser() validates token against server - reliable regardless of timing
+    // Subscribe first so we catch INITIAL_SESSION and SIGNED_IN before getUser() resolves
+    const { unsubscribe } = onAuthStateChange((uid) => {
+      setUserId(uid)
+      if (uid) fetchProfile(uid)
+      else setProfile(null)
+    })
+
+    // getUser() validates token against server and drives setLoading(false).
+    // It awaits full client initialisation (including token refresh if needed),
+    // so it is the reliable signal that auth state is settled.
     client.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserId(user.id)
         fetchProfile(user.id)
       }
       setLoading(false)
-    })
-
-    // Subscribe to future auth changes (sign in/out)
-    const { unsubscribe } = onAuthStateChange((uid) => {
-      setUserId(uid)
-      if (uid) fetchProfile(uid)
-      else setProfile(null)
     })
 
     return unsubscribe
