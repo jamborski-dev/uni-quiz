@@ -10,7 +10,7 @@ import { useAuthContext } from "@/context/AuthContext"
 
 export default function BottomNav() {
   const { theme, toggle } = useTheme()
-  const { profile, signOut } = useAuthContext()
+  const { profile, loading, signOut } = useAuthContext()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const pathname = usePathname()
 
@@ -109,13 +109,18 @@ export default function BottomNav() {
           </AnimatePresence>
 
           <motion.button
-            onClick={() => setShowUserMenu((v) => !v)}
+            onClick={() => !loading && setShowUserMenu((v) => !v)}
             className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950/60 border-2 border-indigo-300 dark:border-indigo-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm"
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={loading ? {} : { scale: 1.08 }}
+            whileTap={loading ? {} : { scale: 0.9 }}
             aria-label="User menu"
+            disabled={loading}
           >
-            {initial ?? <HiUser className="text-base" />}
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              initial ?? <HiUser className="text-base" />
+            )}
           </motion.button>
         </div>
       </nav>
