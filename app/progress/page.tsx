@@ -276,19 +276,27 @@ export default function ProgressPage() {
                       )}
                     </div>
 
-                    {/* Generate button — shown when accuracy ≥ 90% */}
-                    {canGenerate && (
-                      <div className="mt-2.5">
-                        {onCooldown ? (
-                          <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 dark:text-zinc-500">
-                            <HiSparkles className="text-xs text-zinc-300 dark:text-zinc-600" />
-                            Next generation available in {daysLeft} day{daysLeft !== 1 ? "s" : ""}
-                          </div>
-                        ) : (
+                    {/* Generate button — always visible, disabled until ≥90% accuracy or on cooldown */}
+                    {(() => {
+                      const locked = !canGenerate || onCooldown || !!generating
+                      const tooltip = !userId
+                        ? "Sign in to generate questions"
+                        : !canGenerate
+                        ? "Reach 90% accuracy to unlock"
+                        : onCooldown
+                        ? `Available in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`
+                        : ""
+                      return (
+                        <div className="mt-2.5">
                           <button
-                            onClick={() => handleGenerate(group.block)}
-                            disabled={!!generating}
-                            className="flex items-center gap-1.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-lg px-2.5 py-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 transition-colors disabled:opacity-50"
+                            onClick={() => !locked && handleGenerate(group.block)}
+                            disabled={locked}
+                            title={tooltip}
+                            className={`flex items-center gap-1.5 text-[10px] font-semibold rounded-lg px-2.5 py-1.5 border transition-colors
+                              ${locked
+                                ? "grayscale opacity-40 cursor-not-allowed bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400"
+                                : "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/60"
+                              }`}
                           >
                             {isGenerating ? (
                               <>
@@ -299,17 +307,20 @@ export default function ProgressPage() {
                               <>
                                 <HiSparkles className="text-xs" />
                                 Generate new questions
-                                {genStatus && (
-                                  <span className="text-zinc-400 dark:text-zinc-500 font-normal ml-0.5">
-                                    (last: {new Date(genStatus.generated_at).toLocaleDateString()})
+                                {onCooldown && (
+                                  <span className="font-normal ml-0.5">· {daysLeft}d</span>
+                                )}
+                                {genStatus && !onCooldown && (
+                                  <span className="font-normal ml-0.5 text-zinc-400 dark:text-zinc-500">
+                                    · last {new Date(genStatus.generated_at).toLocaleDateString()}
                                   </span>
                                 )}
                               </>
                             )}
                           </button>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Topics */}
