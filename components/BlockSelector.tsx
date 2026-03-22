@@ -91,9 +91,14 @@ const BLOCKS = [
 export default function BlockSelector() {
   const router = useRouter()
   const { userId } = useAuth()
-  const { navigatingTo, startNavigation } = useUIStore()
+  const { navigatingTo, startNavigation, endNavigation } = useUIStore()
   const [expanded, setExpanded] = useState<number | null>(null)
   const [topicStats, setTopicStats] = useState<Map<string, TopicStats>>(new Map())
+
+  // Clear any stale navigation state when returning to this page
+  useEffect(() => {
+    endNavigation()
+  }, [endNavigation])
 
   useEffect(() => {
     if (!userId) return

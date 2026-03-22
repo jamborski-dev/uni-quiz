@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import BottomNav from "@/components/BottomNav"
 import AuthGuard from "@/components/AuthGuard"
+import ToastContainer from "@/components/ToastContainer"
 import { AuthProvider } from "@/context/AuthContext"
 import "./globals.css"
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <BottomNav />
             </AuthGuard>
           </AuthProvider>
+          <ToastContainer />
         </ThemeProvider>
       </body>
     </html>

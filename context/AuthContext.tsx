@@ -9,6 +9,7 @@ interface AuthState {
   profile: Profile | null
   loading: boolean
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState>({
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthState>({
   profile: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
 })
 
 export function useAuthContext() {
@@ -74,8 +76,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null)
   }, [])
 
+  const refreshProfile = useCallback(async () => {
+    if (userId) await fetchProfile(userId)
+  }, [userId, fetchProfile])
+
   return (
-    <AuthContext.Provider value={{ userId, profile, loading, signOut: handleSignOut }}>
+    <AuthContext.Provider value={{ userId, profile, loading, signOut: handleSignOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

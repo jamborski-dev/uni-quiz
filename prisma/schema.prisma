@@ -32,11 +32,41 @@ model Profile {
   display_name    String
   role            String       @default("student")
   quiz_strictness String       @default("balanced")
+  question_mode   String       @default("mixed")
 
-  answer_logs     AnswerLog[]
-  topic_stats     TopicStats[]
+  answer_logs          AnswerLog[]
+  topic_stats          TopicStats[]
+  question_generations QuestionGeneration[]
+  notifications        Notification[]
 
   @@map("profiles")
+}
+
+model QuestionGeneration {
+  id           String   @id @default(uuid()) @db.Uuid
+  user_id      String
+  block        Int      @db.SmallInt
+  topic        String?
+  count        Int      @default(0)
+  generated_at DateTime @default(now()) @db.Timestamptz
+
+  profile      Profile  @relation(fields: [user_id], references: [id])
+
+  @@map("question_generations")
+}
+
+model Notification {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String
+  title      String
+  message    String
+  type       String   @default("info")
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  profile    Profile  @relation(fields: [user_id], references: [id])
+
+  @@map("notifications")
 }
 
 // NOTE: Before running this migration, truncate existing answer_log and topic_stats

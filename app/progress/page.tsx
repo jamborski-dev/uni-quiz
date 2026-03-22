@@ -1,10 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { motion } from "motion/react"
-import { HiChartBar, HiExclamationTriangle, HiCheckBadge, HiQuestionMarkCircle } from "react-icons/hi2"
+import { HiChartBar, HiExclamationTriangle, HiCheckBadge, HiQuestionMarkCircle, HiSparkles } from "react-icons/hi2"
 import { useAuth } from "@/hooks/useAuth"
+import { useToastStore } from "@/store/toast"
+import { useNotificationsStore } from "@/store/notifications"
 import PageTransition from "@/components/PageTransition"
+import type { GenerationStatus, AppNotification } from "@/lib/types"
 
 const TOPIC_ORDER: Record<string, number> = Object.fromEntries([
   // Block 1
@@ -62,15 +65,29 @@ const BLOCK_META: Record<number, { label: string; color: string; badgeClass: str
   4: { label: "Maths - Using Numbers",          color: "border-amber-400 dark:border-amber-600",    badgeClass: "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300",    barClass: "bg-amber-500 dark:bg-amber-400" },
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+
 function accuracy(correct: number, total: number) {
   if (total === 0) return null
   return Math.round((correct / total) * 100)
 }
 
+function daysUntil(dateStr: string) {
+  const target = new Date(dateStr).getTime()
+  const remaining = target - Date.now()
+  if (remaining <= 0) return 0
+  return Math.ceil(remaining / (1000 * 60 * 60 * 24))
+}
+
 export default function ProgressPage() {
   const { userId } = useAuth()
+  const { addToast } = useToastStore()
+  const { addItem } = useNotificationsStore()
+
   const [groups, setGroups] = useState<BlockGroup[]>([])
   const [loading, setLoading] = useState(true)
+  const [generationStatus, setGenerationStatus] = useState<Map<number, GenerationStatus>>(new Map())
+  const [generating, setGenerating] = useState<number | null>(null)
 
   useEffect(() => {
     const url = userId ? `/api/progress?user_id=${userId}` : "/api/progress"
@@ -82,7 +99,6 @@ export default function ProgressPage() {
           if (!map.has(t.block)) map.set(t.block, [])
           map.get(t.block)!.push(t)
         }
-        // Sort each block's topics by book order
         for (const [, topicList] of map) {
           topicList.sort((a, b) => (TOPIC_ORDER[a.topic] ?? 99) - (TOPIC_ORDER[b.topic] ?? 99))
         }
@@ -97,6 +113,67 @@ export default function ProgressPage() {
       })
       .catch(() => setLoading(false))
   }, [userId])
+
+  const fetchGenerationStatus = useCallback(() => {
+    if (!userId) return
+    fetch(`/api/generate?user_id=${userId}`)
+      .then((r) => r.json())
+      .then(({ generations }: { generations: GenerationStatus[] }) => {
+        const map = new Map<number, GenerationStatus>()
+        for (const g of generations) map.set(g.block, g)
+        setGenerationStatus(map)
+      })
+      .catch(() => {})
+  }, [userId])
+
+  useEffect(() => {
+    if (groups.length > 0) fetchGenerationStatus()
+  }, [groups.length, fetchGenerationStatus])
+
+  async function handleGenerate(block: number) {
+    if (!userId || generating !== null) return
+    setGenerating(block)
+    const blockLabel = block === 4 ? "Maths" : `Block ${block}`
+    addToast({ type: "info", title: `Generating ${blockLabel} questions…`, message: "This may take a few seconds", timeout: 4000 })
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ block, user_id: userId }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        addToast({ type: "error", title: "Generation failed", message: data.error ?? "Unknown error", timeout: 0 })
+        return
+      }
+
+      addToast({
+        type: "success",
+        title: "Questions generated!",
+        message: `${data.count} new ${blockLabel} questions added to your pool.`,
+        timeout: 5000,
+      })
+
+      // Push to notifications store so the bell updates without a reload
+      const notif: AppNotification = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        title: "New questions generated",
+        message: `${data.count} new ${blockLabel} questions have been added to your pool.`,
+        type: "success",
+        is_read: false,
+        created_at: new Date().toISOString(),
+      }
+      addItem(notif)
+      fetchGenerationStatus()
+    } catch {
+      addToast({ type: "error", title: "Generation failed", message: "Network error — please try again", timeout: 0 })
+    } finally {
+      setGenerating(null)
+    }
+  }
 
   // Overall stats
   const allTopics = groups.flatMap((g) => g.topics)
@@ -161,6 +238,14 @@ export default function ProgressPage() {
               const groupAnswered = group.topics.reduce((s, t) => s + t.total_answers, 0)
               const groupCorrect = group.topics.reduce((s, t) => s + t.correct, 0)
               const groupAcc = accuracy(groupCorrect, groupAnswered)
+              const canGenerate = userId && groupAcc !== null && groupAcc >= 90
+              const genStatus = generationStatus.get(group.block)
+              const nextAvailable = genStatus
+                ? new Date(genStatus.generated_at).getTime() + SEVEN_DAYS_MS
+                : null
+              const onCooldown = nextAvailable !== null && nextAvailable > Date.now()
+              const daysLeft = onCooldown && nextAvailable ? daysUntil(new Date(nextAvailable).toISOString()) : 0
+              const isGenerating = generating === group.block
 
               return (
                 <motion.div
@@ -171,22 +256,59 @@ export default function ProgressPage() {
                   className={`bg-white dark:bg-[#1a1828] rounded-2xl border-2 ${group.color} shadow-sm overflow-hidden`}
                 >
                   {/* Block header */}
-                  <div className="px-4 pt-3.5 pb-3 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800">
-                    <div>
-                      <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${group.badgeClass}`}>
-                        {group.block === 4 ? "Maths" : `Block ${group.block}`}
-                      </span>
-                      <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 mt-1">
-                        {group.label.split(" - ")[1]}
-                      </p>
-                    </div>
-                    {groupAcc !== null ? (
-                      <div className="text-right">
-                        <p className="text-base font-extrabold text-zinc-800 dark:text-zinc-100">{groupAcc}%</p>
-                        <p className="text-[10px] text-zinc-400 dark:text-zinc-500">{groupCorrect}/{groupAnswered} correct</p>
+                  <div className="px-4 pt-3.5 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${group.badgeClass}`}>
+                          {group.block === 4 ? "Maths" : `Block ${group.block}`}
+                        </span>
+                        <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 mt-1">
+                          {group.label.split(" - ")[1]}
+                        </p>
                       </div>
-                    ) : (
-                      <p className="text-xs text-zinc-300 dark:text-zinc-600">Not started</p>
+                      {groupAcc !== null ? (
+                        <div className="text-right">
+                          <p className="text-base font-extrabold text-zinc-800 dark:text-zinc-100">{groupAcc}%</p>
+                          <p className="text-[10px] text-zinc-400 dark:text-zinc-500">{groupCorrect}/{groupAnswered} correct</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-300 dark:text-zinc-600">Not started</p>
+                      )}
+                    </div>
+
+                    {/* Generate button — shown when accuracy ≥ 90% */}
+                    {canGenerate && (
+                      <div className="mt-2.5">
+                        {onCooldown ? (
+                          <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 dark:text-zinc-500">
+                            <HiSparkles className="text-xs text-zinc-300 dark:text-zinc-600" />
+                            Next generation available in {daysLeft} day{daysLeft !== 1 ? "s" : ""}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleGenerate(group.block)}
+                            disabled={!!generating}
+                            className="flex items-center gap-1.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-lg px-2.5 py-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 transition-colors disabled:opacity-50"
+                          >
+                            {isGenerating ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                                Generating…
+                              </>
+                            ) : (
+                              <>
+                                <HiSparkles className="text-xs" />
+                                Generate new questions
+                                {genStatus && (
+                                  <span className="text-zinc-400 dark:text-zinc-500 font-normal ml-0.5">
+                                    (last: {new Date(genStatus.generated_at).toLocaleDateString()})
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 

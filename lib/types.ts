@@ -2,6 +2,7 @@ export type QuestionType = 'multiple-choice' | 'true-false' | 'open-answer'
 export type Block = 1 | 2 | 3 | 4  // 4 = Maths supplement
 export type StrictnessLevel = 'lenient' | 'balanced' | 'strict'
 export type UserRole = 'student' | 'admin'
+export type QuestionMode = 'mixed' | 'new_only' | 'weak_first' | 'spaced_repetition' | 'mastery'
 
 export interface FurtherReading {
   label: string    // e.g. "Block 1, Part 2, Section 2.4 - The language of computers"
@@ -59,6 +60,23 @@ export interface Profile {
   display_name: string
   role: UserRole
   quiz_strictness: StrictnessLevel
+  question_mode: QuestionMode
+}
+
+export interface AppNotification {
+  id: string
+  user_id: string
+  title: string
+  message: string
+  type: 'success' | 'error' | 'info' | 'warning'
+  is_read: boolean
+  created_at: string
+}
+
+export interface GenerationStatus {
+  block: number
+  generated_at: string
+  count: number
 }
 
 export interface EvaluationResult {
