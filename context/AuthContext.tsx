@@ -4,6 +4,13 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { onAuthStateChange, signOut as authSignOut, getSupabaseClient } from "@/lib/supabase-auth"
 import type { Profile } from "@/lib/types"
 
+// When set in .env.local, skips Supabase auth entirely and uses this fixed user.
+// Only active in development — never set this in production.
+const DEV_USER_ID =
+  process.env.NODE_ENV === "development"
+    ? process.env.NEXT_PUBLIC_DEV_USER_ID ?? null
+    : null
+
 interface AuthState {
   userId: string | null
   profile: Profile | null
@@ -42,6 +49,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // Dev bypass — skip Supabase entirely and use the fixed dev user
+    if (DEV_USER_ID) {
+      setUserId(DEV_USER_ID)
+      fetchProfile(DEV_USER_ID).then(() => setLoading(false))
+      return
+    }
+
     const client = getSupabaseClient()
 
     if (!client) {

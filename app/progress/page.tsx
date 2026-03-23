@@ -86,8 +86,10 @@ export default function ProgressPage() {
 
   const [groups, setGroups] = useState<BlockGroup[]>([])
   const [loading, setLoading] = useState(true)
-  const [generationStatus, setGenerationStatus] = useState<Map<number, GenerationStatus>>(new Map())
-  const [generating, setGenerating] = useState<number | null>(null)
+  // Keyed by "block:all" (block-level) or "block:topicName" (topic-level)
+  const [generationStatus, setGenerationStatus] = useState<Map<string, GenerationStatus>>(new Map())
+  // Tracks which generate key is currently in-flight
+  const [generating, setGenerating] = useState<string | null>(null)
 
   useEffect(() => {
     const url = userId ? `/api/progress?user_id=${userId}` : "/api/progress"
@@ -119,8 +121,11 @@ export default function ProgressPage() {
     fetch(`/api/generate?user_id=${userId}`)
       .then((r) => r.json())
       .then(({ generations }: { generations: GenerationStatus[] }) => {
-        const map = new Map<number, GenerationStatus>()
-        for (const g of generations) map.set(g.block, g)
+        const map = new Map<string, GenerationStatus>()
+        for (const g of generations) {
+          const key = `${g.block}:${g.topic ?? "all"}`
+          map.set(key, g)
+        }
         setGenerationStatus(map)
       })
       .catch(() => {})
@@ -130,17 +135,19 @@ export default function ProgressPage() {
     if (groups.length > 0) fetchGenerationStatus()
   }, [groups.length, fetchGenerationStatus])
 
-  async function handleGenerate(block: number) {
+  async function handleGenerate(block: number, topic?: string) {
     if (!userId || generating !== null) return
-    setGenerating(block)
+    const genKey = `${block}:${topic ?? "all"}`
+    setGenerating(genKey)
     const blockLabel = block === 4 ? "Maths" : `Block ${block}`
-    addToast({ type: "info", title: `Generating ${blockLabel} questions…`, message: "This may take a few seconds", timeout: 4000 })
+    const label = topic ? `"${topic}"` : blockLabel
+    addToast({ type: "info", title: `Generating questions for ${label}…`, message: "This may take a few seconds", timeout: 4000 })
 
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ block, user_id: userId }),
+        body: JSON.stringify({ block, topic, user_id: userId }),
       })
       const data = await res.json()
 
@@ -152,16 +159,15 @@ export default function ProgressPage() {
       addToast({
         type: "success",
         title: "Questions generated!",
-        message: `${data.count} new ${blockLabel} questions added to your pool.`,
+        message: `${data.count} new questions added for ${label}.`,
         timeout: 5000,
       })
 
-      // Push to notifications store so the bell updates without a reload
       const notif: AppNotification = {
         id: crypto.randomUUID(),
         user_id: userId,
         title: "New questions generated",
-        message: `${data.count} new ${blockLabel} questions have been added to your pool.`,
+        message: `${data.count} new questions added for ${label}.`,
         type: "success",
         is_read: false,
         created_at: new Date().toISOString(),
@@ -239,13 +245,14 @@ export default function ProgressPage() {
               const groupCorrect = group.topics.reduce((s, t) => s + t.correct, 0)
               const groupAcc = accuracy(groupCorrect, groupAnswered)
               const canGenerate = userId && groupAcc !== null && groupAcc >= 90
-              const genStatus = generationStatus.get(group.block)
-              const nextAvailable = genStatus
-                ? new Date(genStatus.generated_at).getTime() + SEVEN_DAYS_MS
+              const blockGenKey = `${group.block}:all`
+              const blockGenStatus = generationStatus.get(blockGenKey)
+              const blockNextAvailable = blockGenStatus
+                ? new Date(blockGenStatus.generated_at).getTime() + SEVEN_DAYS_MS
                 : null
-              const onCooldown = nextAvailable !== null && nextAvailable > Date.now()
-              const daysLeft = onCooldown && nextAvailable ? daysUntil(new Date(nextAvailable).toISOString()) : 0
-              const isGenerating = generating === group.block
+              const blockOnCooldown = blockNextAvailable !== null && blockNextAvailable > Date.now()
+              const blockDaysLeft = blockOnCooldown && blockNextAvailable ? daysUntil(new Date(blockNextAvailable).toISOString()) : 0
+              const isBlockGenerating = generating === blockGenKey
 
               return (
                 <motion.div
@@ -276,15 +283,15 @@ export default function ProgressPage() {
                       )}
                     </div>
 
-                    {/* Generate button — always visible, disabled until ≥90% accuracy or on cooldown */}
+                    {/* Block-level generate button */}
                     {(() => {
-                      const locked = !canGenerate || onCooldown || !!generating
+                      const locked = !canGenerate || blockOnCooldown || !!generating
                       const tooltip = !userId
                         ? "Sign in to generate questions"
                         : !canGenerate
-                        ? "Reach 90% accuracy to unlock"
-                        : onCooldown
-                        ? `Available in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`
+                        ? "Reach 90% block accuracy to unlock"
+                        : blockOnCooldown
+                        ? `Available in ${blockDaysLeft} day${blockDaysLeft !== 1 ? "s" : ""}`
                         : ""
                       return (
                         <div className="mt-2.5">
@@ -298,7 +305,7 @@ export default function ProgressPage() {
                                 : "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/60"
                               }`}
                           >
-                            {isGenerating ? (
+                            {isBlockGenerating ? (
                               <>
                                 <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
                                 Generating…
@@ -306,13 +313,11 @@ export default function ProgressPage() {
                             ) : (
                               <>
                                 <HiSparkles className="text-xs" />
-                                Generate new questions
-                                {onCooldown && (
-                                  <span className="font-normal ml-0.5">· {daysLeft}d</span>
-                                )}
-                                {genStatus && !onCooldown && (
+                                Generate for all topics
+                                {blockOnCooldown && <span className="font-normal ml-0.5">· {blockDaysLeft}d</span>}
+                                {blockGenStatus && !blockOnCooldown && (
                                   <span className="font-normal ml-0.5 text-zinc-400 dark:text-zinc-500">
-                                    · last {new Date(genStatus.generated_at).toLocaleDateString()}
+                                    · last {new Date(blockGenStatus.generated_at).toLocaleDateString()}
                                   </span>
                                 )}
                               </>
@@ -331,6 +336,27 @@ export default function ProgressPage() {
                       const isWeak = topic.total_answers > 0 && topic.weakness_score > 0.6
                       const isStrong = topic.total_answers > 0 && topic.weakness_score <= 0.4
                       const seen = topic.total_answers > 0
+
+                      // Per-topic generation state
+                      const topicGenKey = `${group.block}:${topic.topic}`
+                      const topicCanGenerate = userId && acc !== null && acc >= 90
+                      const topicGenStatus = generationStatus.get(topicGenKey)
+                      const topicNextAvailable = topicGenStatus
+                        ? new Date(topicGenStatus.generated_at).getTime() + SEVEN_DAYS_MS
+                        : null
+                      const topicOnCooldown = topicNextAvailable !== null && topicNextAvailable > Date.now()
+                      const topicDaysLeft = topicOnCooldown && topicNextAvailable
+                        ? daysUntil(new Date(topicNextAvailable).toISOString())
+                        : 0
+                      const isTopicGenerating = generating === topicGenKey
+                      const topicLocked = !topicCanGenerate || topicOnCooldown || !!generating
+                      const topicTooltip = !userId
+                        ? "Sign in to generate"
+                        : !topicCanGenerate
+                        ? "Reach 90% on this topic to unlock"
+                        : topicOnCooldown
+                        ? `Available in ${topicDaysLeft}d`
+                        : "Generate new questions for this topic"
 
                       return (
                         <motion.div
@@ -356,7 +382,7 @@ export default function ProgressPage() {
                                 {topic.topic}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
                               {seen ? (
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${
                                   isWeak
@@ -372,6 +398,26 @@ export default function ProgressPage() {
                                   {topic.total_questions}q
                                 </span>
                               )}
+                              {/* Per-topic generate button */}
+                              <button
+                                onClick={() => !topicLocked && handleGenerate(group.block, topic.topic)}
+                                disabled={topicLocked}
+                                title={topicTooltip}
+                                className={`flex items-center gap-1 transition-colors rounded-md px-1.5 py-1 border text-[9px] font-semibold ${
+                                  topicLocked
+                                    ? "grayscale opacity-35 cursor-not-allowed border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400"
+                                    : "border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                                }`}
+                              >
+                                {isTopicGenerating ? (
+                                  <div className="w-2.5 h-2.5 border-[1.5px] border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <>
+                                    <HiSparkles className="text-[9px]" />
+                                    {topicOnCooldown ? `${topicDaysLeft}d` : "Gen"}
+                                  </>
+                                )}
+                              </button>
                             </div>
                           </div>
 

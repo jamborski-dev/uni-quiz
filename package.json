@@ -6,6 +6,7 @@
     "postinstall": "prisma generate",
     "predev": "node scripts/network-url.mjs",
     "dev": "next dev -H 0.0.0.0 --webpack",
+    "dev:pwa": "node scripts/network-url.mjs https && NEXT_PUBLIC_PWA_ENABLED=true next dev -H 0.0.0.0 --experimental-https --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",

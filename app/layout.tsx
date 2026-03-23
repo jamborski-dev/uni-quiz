@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/ThemeProvider"
 import BottomNav from "@/components/BottomNav"
 import AuthGuard from "@/components/AuthGuard"
 import ToastContainer from "@/components/ToastContainer"
+import PWAManager from "@/components/PWAManager"
 import { AuthProvider } from "@/context/AuthContext"
 import "./globals.css"
 
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </AuthGuard>
           </AuthProvider>
           <ToastContainer />
+          <PWAManager />
         </ThemeProvider>
       </body>
     </html>

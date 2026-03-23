@@ -35,14 +35,18 @@ export async function GET(request: NextRequest) {
 
     // Deduplicate: keep only the latest per block
     const seen = new Set<number>()
+    // Deduplicate per (block, topic) pair — keep only latest
+    const seenKeys = new Set<string>()
     const generations = rows
       .filter((r) => {
-        if (seen.has(r.block)) return false
-        seen.add(r.block)
+        const key = `${r.block}:${r.topic ?? "all"}`
+        if (seenKeys.has(key)) return false
+        seenKeys.add(key)
         return true
       })
       .map((r) => ({
         block: r.block,
+        topic: r.topic ?? null,
         generated_at: r.generated_at.toISOString(),
         count: r.count,
       }))
@@ -90,9 +94,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Check 7-day cooldown
+    // 2. Check 7-day cooldown — scoped to (block, topic) pair
     const lastGen = await prisma.questionGeneration.findFirst({
-      where: { user_id, block },
+      where: { user_id, block, topic: topic ?? null },
       orderBy: { generated_at: "desc" },
     })
 

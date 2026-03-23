@@ -75,6 +75,7 @@ export interface AppNotification {
 
 export interface GenerationStatus {
   block: number
+  topic: string | null   // null = block-level generation
   generated_at: string
   count: number
 }

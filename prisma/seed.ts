@@ -3,7 +3,32 @@ import { SEED_QUESTIONS } from "../data/questions"
 
 const prisma = new PrismaClient()
 
+// Fixed UUID used by NEXT_PUBLIC_DEV_USER_ID in .env.local
+export const DEV_USER_ID = "00000000-0000-0000-0000-000000000001"
+
+async function seedDevUser() {
+  if (process.env.NODE_ENV === "production") return
+
+  await prisma.profile.upsert({
+    where: { id: DEV_USER_ID },
+    update: {},
+    create: {
+      id: DEV_USER_ID,
+      display_name: "Dev User",
+      role: "student",
+      quiz_strictness: "balanced",
+      question_mode: "mixed",
+    },
+  })
+
+  console.log(`Dev user seeded (id: ${DEV_USER_ID})`)
+}
+
 async function main() {
+  console.log("Clearing answer logs and topic stats...")
+  await prisma.answerLog.deleteMany()
+  await prisma.topicStats.deleteMany()
+
   console.log("Clearing existing questions...")
   await prisma.question.deleteMany()
 
@@ -24,6 +49,8 @@ async function main() {
   })
 
   console.log(`Seeded ${SEED_QUESTIONS.length} questions.`)
+
+  await seedDevUser()
 }
 
 main()
