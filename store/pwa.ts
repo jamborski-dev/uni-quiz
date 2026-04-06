@@ -20,6 +20,10 @@ interface PWAStore {
   setRegistration: (r: ServiceWorkerRegistration | null) => void
   install: () => Promise<"accepted" | "dismissed" | null>
   applyUpdate: () => void
+  /** Force-checks for a new SW. Resolves true if an update was found. */
+  checkForUpdate: () => Promise<boolean>
+  /** Unregisters all SWs, wipes every cache bucket, then reloads. */
+  clearCacheAndReload: () => Promise<void>
 }
 
 export const usePWAStore = create<PWAStore>((set, get) => ({
@@ -48,5 +52,32 @@ export const usePWAStore = create<PWAStore>((set, get) => ({
     if (registration?.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" })
     }
+  },
+
+  checkForUpdate: async () => {
+    const { registration } = get()
+    if (!registration) return false
+    try {
+      await registration.update()
+      // Give the browser a moment to detect the waiting worker
+      await new Promise((r) => setTimeout(r, 500))
+      return !!registration.waiting
+    } catch {
+      return false
+    }
+  },
+
+  clearCacheAndReload: async () => {
+    // Unregister every SW scope
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(registrations.map((r) => r.unregister()))
+    }
+    // Wipe every cache bucket (workbox creates several)
+    if ("caches" in window) {
+      const keys = await caches.keys()
+      await Promise.all(keys.map((k) => caches.delete(k)))
+    }
+    window.location.reload()
   },
 }))

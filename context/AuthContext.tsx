@@ -5,11 +5,22 @@ import { onAuthStateChange, signOut as authSignOut, getSupabaseClient } from "@/
 import type { Profile } from "@/lib/types"
 
 // When set in .env.local, skips Supabase auth entirely and uses this fixed user.
-// Only active in development — never set this in production.
-const DEV_USER_ID =
-  process.env.NODE_ENV === "development"
-    ? process.env.NEXT_PUBLIC_DEV_USER_ID ?? null
-    : null
+// NEXT_PUBLIC_DEV_USER_ID is never set in Vercel env vars, so this is always
+// null in real production. The hostname guard is a belt-and-suspenders check.
+const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? null
+
+function isLocalHost(): boolean {
+  if (typeof window === "undefined") return false
+  const { hostname } = window.location
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    // LAN private ranges: 10.x, 172.16–31.x, 192.168.x
+    /^10\./.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+    /^192\.168\./.test(hostname)
+  )
+}
 
 interface AuthState {
   userId: string | null
@@ -49,8 +60,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Dev bypass — skip Supabase entirely and use the fixed dev user
-    if (DEV_USER_ID) {
+    // Dev bypass — skip Supabase entirely and use the fixed dev user.
+    // Active whenever NEXT_PUBLIC_DEV_USER_ID is set AND the app is running
+    // on a local/LAN address (localhost, 127.x, 10.x, 172.16–31.x, 192.168.x).
+    if (DEV_USER_ID && isLocalHost()) {
       setUserId(DEV_USER_ID)
       fetchProfile(DEV_USER_ID).then(() => setLoading(false))
       return

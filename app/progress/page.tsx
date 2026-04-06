@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useToastStore } from "@/store/toast"
 import { useNotificationsStore } from "@/store/notifications"
 import PageTransition from "@/components/PageTransition"
+import Tooltip from "@/components/Tooltip"
 import type { GenerationStatus, AppNotification } from "@/lib/types"
 
 const TOPIC_ORDER: Record<string, number> = Object.fromEntries([
@@ -294,11 +295,11 @@ export default function ProgressPage() {
                         ? `Available in ${blockDaysLeft} day${blockDaysLeft !== 1 ? "s" : ""}`
                         : ""
                       return (
-                        <div className="mt-2.5">
+                        <div className="mt-2.5" data-onboarding="gen-questions">
+                          <Tooltip content={tooltip} wrapDisabled={locked} side="top">
                           <button
                             onClick={() => !locked && handleGenerate(group.block)}
                             disabled={locked}
-                            title={tooltip}
                             className={`flex items-center gap-1.5 text-[10px] font-semibold rounded-lg px-2.5 py-1.5 border transition-colors
                               ${locked
                                 ? "grayscale opacity-40 cursor-not-allowed bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400"
@@ -323,6 +324,7 @@ export default function ProgressPage() {
                               </>
                             )}
                           </button>
+                          </Tooltip>
                         </div>
                       )
                     })()}
@@ -399,10 +401,10 @@ export default function ProgressPage() {
                                 </span>
                               )}
                               {/* Per-topic generate button */}
+                              <Tooltip content={topicTooltip} wrapDisabled={topicLocked} side="top">
                               <button
                                 onClick={() => !topicLocked && handleGenerate(group.block, topic.topic)}
                                 disabled={topicLocked}
-                                title={topicTooltip}
                                 className={`flex items-center gap-1 transition-colors rounded-md px-1.5 py-1 border text-[9px] font-semibold ${
                                   topicLocked
                                     ? "grayscale opacity-35 cursor-not-allowed border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400"
@@ -418,6 +420,7 @@ export default function ProgressPage() {
                                   </>
                                 )}
                               </button>
+                              </Tooltip>
                             </div>
                           </div>
 

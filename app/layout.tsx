@@ -5,6 +5,9 @@ import BottomNav from "@/components/BottomNav"
 import AuthGuard from "@/components/AuthGuard"
 import ToastContainer from "@/components/ToastContainer"
 import PWAManager from "@/components/PWAManager"
+import InstallBanner from "@/components/InstallBanner"
+import OnboardingOverlay from "@/components/OnboardingOverlay"
+import PageAnimator from "@/components/PageAnimator"
 import { AuthProvider } from "@/context/AuthContext"
 import "./globals.css"
 
@@ -50,14 +53,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeProvider>
           <AuthProvider>
             <AuthGuard>
-              <div className="pb-20">
-                {children}
-              </div>
-              <BottomNav />
+              <PageAnimator>{children}</PageAnimator>
             </AuthGuard>
+            {/* BottomNav lives outside AuthGuard so it is never unmounted
+                when AuthGuard briefly shows its loading spinner on auth
+                state changes. It manages its own loading/signed-out state. */}
+            <BottomNav />
           </AuthProvider>
           <ToastContainer />
+          <InstallBanner />
           <PWAManager />
+          <OnboardingOverlay />
         </ThemeProvider>
       </body>
     </html>

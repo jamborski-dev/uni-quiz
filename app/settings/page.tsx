@@ -4,11 +4,14 @@ import { useState, useEffect } from "react"
 import { motion } from "motion/react"
 import {
   HiCog6Tooth, HiCheckCircle, HiDevicePhoneMobile,
-  HiArrowDownTray, HiArrowPath, HiSignal,
+  HiArrowDownTray, HiArrowPath, HiSignal, HiTrash,
+  HiQuestionMarkCircle,
 } from "react-icons/hi2"
 import { useAuthContext } from "@/context/AuthContext"
 import { useToastStore } from "@/store/toast"
 import { usePWAStore } from "@/store/pwa"
+import { usePlatform } from "@/hooks/usePlatform"
+import { useOnboardingStore } from "@/store/onboarding"
 import PageTransition from "@/components/PageTransition"
 import type { StrictnessLevel, QuestionMode } from "@/lib/types"
 
@@ -46,23 +49,18 @@ const MODE_OPTIONS: { value: QuestionMode; label: string; description: string }[
   },
 ]
 
-function useIsIOS() {
-  const [isIOS, setIsIOS] = useState(false)
-  useEffect(() => {
-    const ua = navigator.userAgent
-    setIsIOS(/iPhone|iPad|iPod/.test(ua) && !(window.navigator as { standalone?: boolean }).standalone)
-  }, [])
-  return isIOS
-}
 
 export default function SettingsPage() {
   const { userId, profile, refreshProfile } = useAuthContext()
   const { addToast } = useToastStore()
-  const { canInstall, isInstalled, hasUpdate, install, applyUpdate } = usePWAStore()
-  const isIOS = useIsIOS()
+  const { canInstall, isInstalled, hasUpdate, install, applyUpdate, checkForUpdate, clearCacheAndReload } = usePWAStore()
+  const { restart: restartTour } = useOnboardingStore()
+  const platform = usePlatform()
 
   const [installing, setInstalling] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [clearing, setClearing] = useState(false)
   const [strictness, setStrictness] = useState<StrictnessLevel>("balanced")
   const [mode, setMode] = useState<QuestionMode>("mixed")
   const [saving, setSaving] = useState(false)
@@ -116,6 +114,28 @@ export default function SettingsPage() {
     setTimeout(() => setUpdating(false), 5000)
   }
 
+  async function handleCheckUpdate() {
+    setChecking(true)
+    try {
+      const found = await checkForUpdate()
+      if (found) {
+        addToast({ type: "info", title: "Update ready", message: "Tap 'Update now' to apply it", timeout: 5000 })
+      } else {
+        addToast({ type: "success", title: "You're up to date", timeout: 3000 })
+      }
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  async function handleClearCache() {
+    setClearing(true)
+    addToast({ type: "info", title: "Clearing cache…", message: "Page will reload", timeout: 3000 })
+    // Small delay so the toast renders before reload
+    await new Promise((r) => setTimeout(r, 800))
+    await clearCacheAndReload()
+  }
+
   return (
     <PageTransition>
       <main className="min-h-screen px-4 pt-6 pb-10 max-w-sm mx-auto">
@@ -136,6 +156,7 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-5">
           {/* Question delivery mode */}
           <motion.section
+            data-onboarding="question-mode"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
@@ -168,6 +189,7 @@ export default function SettingsPage() {
 
           {/* AI marking strictness */}
           <motion.section
+            data-onboarding="strictness"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
@@ -242,7 +264,7 @@ export default function SettingsPage() {
               )}
 
               {/* iOS Safari manual instructions */}
-              {!isInstalled && !canInstall && isIOS && (
+              {!isInstalled && !canInstall && platform === "ios" && (
                 <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900 p-3">
                   <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-1">
                     Install on iOS
@@ -250,6 +272,20 @@ export default function SettingsPage() {
                   <ol className="text-[11px] text-indigo-600 dark:text-indigo-400 space-y-0.5 list-decimal list-inside">
                     <li>Tap the <strong>Share</strong> button in Safari</li>
                     <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+                    <li>Tap <strong>Add</strong> to confirm</li>
+                  </ol>
+                </div>
+              )}
+
+              {/* Firefox manual instructions (no beforeinstallprompt support) */}
+              {!isInstalled && !canInstall && platform === "firefox" && (
+                <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900 p-3">
+                  <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-1">
+                    Install on Firefox
+                  </p>
+                  <ol className="text-[11px] text-indigo-600 dark:text-indigo-400 space-y-0.5 list-decimal list-inside">
+                    <li>Tap the <strong>⋮ menu</strong> in the toolbar</li>
+                    <li>Tap <strong>Install</strong> or <strong>Add to Home Screen</strong></li>
                     <li>Tap <strong>Add</strong> to confirm</li>
                   </ol>
                 </div>
@@ -272,14 +308,49 @@ export default function SettingsPage() {
                   </button>
                 </div>
               )}
+
+              {/* Maintenance row */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleCheckUpdate}
+                  disabled={checking || clearing}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 disabled:opacity-40 transition-opacity active:scale-[0.97]"
+                >
+                  <HiArrowPath className={`text-sm ${checking ? "animate-spin" : ""}`} />
+                  {checking ? "Checking…" : "Check for update"}
+                </button>
+                <button
+                  onClick={handleClearCache}
+                  disabled={checking || clearing}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-200 dark:border-red-900/60 text-[11px] font-semibold text-red-500 dark:text-red-400 disabled:opacity-40 transition-opacity active:scale-[0.97]"
+                >
+                  <HiTrash className="text-sm" />
+                  {clearing ? "Clearing…" : "Clear cache & reload"}
+                </button>
+              </div>
             </div>
           </motion.section>
+
+          {/* Restart tour */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <button
+              onClick={restartTour}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors"
+            >
+              <HiQuestionMarkCircle className="text-base text-indigo-400" />
+              Restart app tour
+            </button>
+          </motion.div>
 
           {/* Save button */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
+            transition={{ duration: 0.3, delay: 0.25 }}
           >
             <button
               onClick={handleSave}

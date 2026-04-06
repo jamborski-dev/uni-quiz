@@ -135,6 +135,7 @@ export default function BlockSelector() {
 
   return (
     <motion.div
+      data-onboarding="block-list"
       className="w-full max-w-sm flex flex-col gap-3"
       initial="hidden"
       animate="show"
@@ -147,6 +148,7 @@ export default function BlockSelector() {
         return (
           <motion.div
             key={block.id}
+            data-onboarding={i === 0 ? "block-first" : undefined}
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut", delay: i * 0.07 }}
@@ -276,6 +278,7 @@ export default function BlockSelector() {
         const isLoading = navigatingTo === key
         return (
           <motion.button
+            data-onboarding="mixed-quiz"
             onClick={() => {
               if (navigatingTo) return
               startNavigation(key)

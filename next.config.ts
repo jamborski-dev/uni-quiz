@@ -6,7 +6,9 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_PWA_ENABLED !== "true",
+  // Always disabled in dev — SW + self-signed LAN certs = broken fetches.
+  // Use `pnpm preview:lan` for full PWA testing on the local network.
+  disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
   },

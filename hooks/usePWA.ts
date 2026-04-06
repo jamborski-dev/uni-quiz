@@ -94,10 +94,15 @@ export function usePWA() {
         })
       })
 
-      // When a new SW takes control, reload to apply changes
+      // Reload only when an *updated* SW replaces an existing one.
+      // Capturing the controller reference before the event distinguishes
+      // "first install taking control via clientsClaim()" (previousController
+      // is null → no reload) from "updated SW replacing an existing one"
+      // (previousController is non-null → reload to apply changes).
+      const previousController = navigator.serviceWorker.controller
       let refreshing = false
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (!refreshing) {
+        if (!refreshing && previousController) {
           refreshing = true
           window.location.reload()
         }
