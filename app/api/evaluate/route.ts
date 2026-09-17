@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const level = (strictness ?? "balanced") as StrictnessLevel
     const instruction = STRICTNESS_INSTRUCTIONS[level] ?? STRICTNESS_INSTRUCTIONS.balanced
 
-    const systemPrompt = `You are a friendly and encouraging tutor for Open University students studying TM111 (Introduction to Computing and Information Technology). Your job is to evaluate a student's open-answer response.
+    const systemPrompt = `You are a friendly and encouraging tutor for a student preparing for the CompTIA Security+ SY0-701 exam. Your job is to evaluate a student's open-answer response.
 
 ${instruction}
 

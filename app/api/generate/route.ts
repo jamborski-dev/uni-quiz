@@ -7,17 +7,19 @@ const MIN_ACCURACY = 0.9
 const QUESTIONS_TO_GENERATE = 10
 
 const BLOCK_TOPICS: Record<number, string[]> = {
-  1: ["Living in a digital world", "The evolving computer", "Digital media", "A world built of data", "Weaving the web", "Crossing boundaries - HCI and design"],
-  2: ["Programming with Scratch - sequences and sprites", "Numbers, strings and lists", "Selection and Booleans", "Loops", "Nested structures and modularity", "Algorithms and sorting"],
-  3: ["Network technologies", "The internet", "Wireless communications", "The Internet of Things", "Online communication", "The networked society"],
-  4: ["Percentages", "Exponent notation", "Scientific notation", "Binary and number systems", "Equations and substitution", "Inverse square law"],
+  1: ["Fundamentals of Security", "Cryptographic Solutions", "Change Management"],
+  2: ["Threat Actors", "Physical Security", "Social Engineering", "Malware", "Vulnerabilities and Attacks", "Malicious Activity", "Hardening"],
+  3: ["Data Protection", "Cyber Resilience and Redundancy", "Security Architecture", "Security Infrastructure"],
+  4: ["Asset and Change Management", "Identity and Access Management", "Security Techniques", "Vulnerability Management", "Alerting and Monitoring", "Incident Response", "Investigating an Incident", "Automation and Orchestration"],
+  5: ["Risk Management", "Third-party Vendor Risks", "Governance and Compliance", "Audits and Assessments", "Security Awareness"],
 }
 
 const BLOCK_NAMES: Record<number, string> = {
-  1: "The Digital World",
-  2: "Creating Solutions",
-  3: "Connecting People",
-  4: "Using Numbers (Maths)",
+  1: "General Security Concepts",
+  2: "Threats, Vulnerabilities & Mitigations",
+  3: "Security Architecture",
+  4: "Security Operations",
+  5: "Security Program Management & Oversight",
 }
 
 /** GET /api/generate?user_id=X — return latest generation per block */
@@ -68,8 +70,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user_id) return NextResponse.json({ error: "user_id required" }, { status: 400 })
-    if (!block || block < 1 || block > 4) {
-      return NextResponse.json({ error: "block must be 1–4" }, { status: 400 })
+    if (!block || block < 1 || block > 5) {
+      return NextResponse.json({ error: "block must be 1–5" }, { status: 400 })
     }
 
     // 1. Check block accuracy
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
       ? `, focusing on the topic: "${topic}"`
       : `. Cover a variety of these topics: ${BLOCK_TOPICS[block]?.join(", ")}`
 
-    const systemPrompt = `You are an expert question writer for the Open University TM111 module (Introduction to Computing and IT), specifically Block ${block}: ${BLOCK_NAMES[block]}.
+    const systemPrompt = `You are an expert question writer for the CompTIA Security+ SY0-701 exam, specifically Domain ${block}: ${BLOCK_NAMES[block]}.
 
 Generate exactly ${QUESTIONS_TO_GENERATE} quiz questions.
 
@@ -125,7 +127,7 @@ Rules:
 - Return ONLY a valid JSON array with no markdown, no code fences, no text outside the array.
 - Each element must have exactly these fields:
   "block" (integer ${block}),
-  "topic" (string - the specific topic name from the TM111 syllabus),
+  "topic" (string - the specific topic name from the Security+ SY0-701 syllabus),
   "type" ("multiple-choice" or "true-false"),
   "question" (string),
   "options" (array - 4 strings for multiple-choice, ["True","False"] for true-false),
@@ -137,7 +139,7 @@ Rules:
 - Vary difficulty: mix straightforward, moderate, and challenging questions.
 - Ensure all distractors in multiple-choice are plausible.`
 
-    const userPrompt = `Generate ${QUESTIONS_TO_GENERATE} questions for TM111 Block ${block}: ${BLOCK_NAMES[block]}${topicContext}.`
+    const userPrompt = `Generate ${QUESTIONS_TO_GENERATE} questions for Security+ SY0-701 Domain ${block}: ${BLOCK_NAMES[block]}${topicContext}.`
 
     // 4. Call Claude
     const response = await anthropic.messages.create({

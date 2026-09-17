@@ -88,6 +88,8 @@ export async function POST(request: NextRequest) {
 
       const weakness_score = computeWeaknessScore(allAnswers)
 
+      const sessionAccuracy = topicAnswers.length > 0 ? correctCount / topicAnswers.length : 0
+
       const existing = await prisma.topicStats.findUnique({
         where: { topic_user_id: { topic, user_id } },
       })
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
           data: {
             total_answers: { increment: topicAnswers.length },
             correct: { increment: correctCount },
+            best_score: Math.max(existing.best_score, sessionAccuracy),
             last_seen: new Date(),
             weakness_score,
           },
@@ -110,6 +113,7 @@ export async function POST(request: NextRequest) {
             block,
             total_answers: topicAnswers.length,
             correct: correctCount,
+            best_score: sessionAccuracy,
             last_seen: new Date(),
             weakness_score,
             user_id,

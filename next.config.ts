@@ -1,5 +1,5 @@
-import type { NextConfig } from "next";
-import withPWAInit from "@ducanh2912/next-pwa";
+import type { NextConfig } from "next"
+import withPWAInit from "@ducanh2912/next-pwa"
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -10,12 +10,13 @@ const withPWA = withPWAInit({
   // Use `pnpm preview:lan` for full PWA testing on the local network.
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
-    disableDevLogs: true,
-  },
-});
+    disableDevLogs: true
+  }
+})
 
 const nextConfig: NextConfig = {
   devIndicators: false,
-};
+  output: "standalone"
+}
 
-export default withPWA(nextConfig);
+export default withPWA(nextConfig)

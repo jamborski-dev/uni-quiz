@@ -17,14 +17,14 @@ export interface OnboardingStep {
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: "welcome",
-    title: "Welcome to TM111 Quiz",
+    title: "Welcome to Security+ Quiz",
     body: "This quick tour covers the key features. Tap Next, or tap anywhere on the dark area to continue. Skip it any time.",
   },
   {
     id: "block-first",
     selector: "[data-onboarding='block-first']",
-    title: "Pick a study block",
-    body: "Each block maps to a different part of your course material. Tap a block to see its topics, then start a focused quiz.",
+    title: "Pick an exam domain",
+    body: "Each domain maps to a section of the CompTIA Security+ SY0-701 exam. Tap a domain to see its topics, then start a focused quiz.",
     position: "below",
     requiresPath: "/",
   },

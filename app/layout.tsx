@@ -21,14 +21,14 @@ const montserrat = Montserrat({
 const themeScript = `(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.classList.add(t)}catch(e){}})();`
 
 export const metadata: Metadata = {
-  title: "Open Uni TM111 Quiz",
-  description: "Open University TM111 revision quiz",
+  title: "Security+ Quiz",
+  description: "CompTIA Security+ SY0-701 exam prep",
   manifest: "/manifest.json",
-  icons: { icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" },
+  icons: { icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Open Uni TM111 Quiz",
+    title: "Security+ Quiz",
   },
 }
 

@@ -14,6 +14,20 @@ import type {
 
 const SESSION_STORAGE_KEY = "quiz_session_result"
 
+function shuffleOptions(question: Question): Question {
+  if (question.type !== "multiple-choice") return question
+  const indices = question.options.map((_, i) => i)
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[indices[i], indices[j]] = [indices[j], indices[i]]
+  }
+  return {
+    ...question,
+    options: indices.map((i) => question.options[i]),
+    correct_index: indices.indexOf(question.correct_index),
+  }
+}
+
 interface OpenAnswerResult {
   text: string
   evaluation: EvaluationResult
@@ -53,9 +67,10 @@ export function useQuiz(
 
         setOpenAnswersEnabled(creditsAvailable)
 
-        const filtered = creditsAvailable
+        const filtered = (creditsAvailable
           ? questions
           : questions.filter((q) => q.type !== "open-answer")
+        ).map(shuffleOptions)
 
         setSession({
           block,

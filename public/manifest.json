@@ -1,7 +1,7 @@
 {
-  "name": "Open Uni Quiz — TM111",
+  "name": "Security+ Quiz",
   "short_name": "OpenUniQuiz",
-  "description": "Open University TM111 revision quiz",
+  "description": "CompTIA Security+ SY0-701 exam prep",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

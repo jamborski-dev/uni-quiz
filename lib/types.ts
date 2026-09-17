@@ -1,5 +1,5 @@
 export type QuestionType = 'multiple-choice' | 'true-false' | 'open-answer'
-export type Block = 1 | 2 | 3 | 4  // 4 = Maths supplement
+export type Block = 1 | 2 | 3 | 4 | 5  // CompTIA Security+ SY0-701 domains
 export type StrictnessLevel = 'lenient' | 'balanced' | 'strict'
 export type UserRole = 'student' | 'admin'
 export type QuestionMode = 'mixed' | 'new_only' | 'weak_first' | 'spaced_repetition' | 'mastery'
@@ -40,6 +40,7 @@ export interface TopicStats {
   block: Block
   total_answers: number
   correct: number
+  best_score: number      // best single-session accuracy (0.0–1.0)
   last_seen: string
   weakness_score: number  // 0.0 (strong) to 1.0 (weak)
   user_id: string

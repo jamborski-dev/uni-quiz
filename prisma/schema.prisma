@@ -94,6 +94,7 @@ model TopicStats {
   block          Int       @db.SmallInt
   total_answers  Int       @default(0)
   correct        Int       @default(0)
+  best_score     Float     @default(0)   // best single-session accuracy (0.0–1.0)
   last_seen      DateTime? @db.Timestamptz
   weakness_score Float     @default(0.5)
   user_id        String
